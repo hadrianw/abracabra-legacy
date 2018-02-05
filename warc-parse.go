@@ -5,9 +5,14 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	//"strconv"
 	//"strings"
+)
+
+import (
+	"golang.org/x/net/html"
 )
 
 func getLine(r *bufio.Reader) []byte {
@@ -20,7 +25,7 @@ func getLine(r *bufio.Reader) []byte {
 		panic(err)
 	}
 	if lf != byte('\n') {
-		panic(fmt.Sprintf("expected LF after CR, instead: ", lf))
+		panic(fmt.Sprintf("expected LF after CR, instead: %q", lf))
 	}
 	// remove CR
 	return line[:len(line)-1]
@@ -82,13 +87,25 @@ func main() {
 		}
 		
 		if warc_type_response {
-			htmlbuf := make([]byte, warc_content_length)
-			_, err := io.ReadFull(r, htmlbuf)
+			// FIXME: it's now double buffered, maybe use NewReaderSize to make it more sensible?
+			lr := bufio.NewReader(io.LimitReader(r, int64(warc_content_length)))
+
+			resp, err := http.ReadResponse(lr, nil)
 			if err != nil {
 				panic(err)
 			}
 
-			fmt.Printf("%s: %v (%s)\n", warc_target_uri, warc_content_length, warc_truncated)
+			// FIXME: check for Content-Type html
+
+			// FIXME: make sure that we have UTF-8
+			//z := html.NewTokenizer(lr)
+			_, err = html.Parse(lr)
+			if err != nil {
+				panic(err)
+			}
+
+			// TODO: actual do work
+			fmt.Printf("%s: %v (%s)\n %v", warc_target_uri, warc_content_length, warc_truncated, resp)
 		} else {
 			_, err := r.Discard(int(warc_content_length))
 			if err != nil {
