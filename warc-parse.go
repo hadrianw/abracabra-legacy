@@ -26,10 +26,21 @@ func getLine(r *bufio.Reader) []byte {
 	return line[:len(line)-1]
 }
 
+func noEof(r *bufio.Reader) bool {
+	_, err := r.Peek(1)
+	if err != nil {
+		if err == io.EOF {
+			return false
+		}
+		panic(err)
+	}
+	return true
+}
+
 func main() {
 	r := bufio.NewReader(os.Stdin)
 
-	for ;; {
+	for ; noEof(r); {
 		line := getLine(r)
 		if !bytes.Equal(line, []byte("WARC/1.0")) {
 			panic(fmt.Sprintf("expected WARC/1.0, instead: %q", line))
