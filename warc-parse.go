@@ -85,12 +85,14 @@ func main() {
 		if warc_content_length == 0 {
 			panic("expected Content-Length > 0")
 		}
+
+		lr := io.LimitedReader{r, int64(warc_content_length)}
 		
 		if warc_type_response {
 			// FIXME: it's now double buffered, maybe use NewReaderSize to make it more sensible?
-			lr := bufio.NewReader(io.LimitReader(r, int64(warc_content_length)))
+			blr := bufio.NewReader(&lr)
 
-			resp, err := http.ReadResponse(lr, nil)
+			resp, err := http.ReadResponse(blr, nil)
 			if err != nil {
 				panic(err)
 			}
@@ -98,20 +100,31 @@ func main() {
 			// FIXME: check for Content-Type html
 
 			// FIXME: make sure that we have UTF-8
-			//z := html.NewTokenizer(lr)
-			_, err = html.Parse(lr)
-			if err != nil {
-				panic(err)
+			accept := true
+			z := html.NewTokenizer(blr)
+			for {
+				tt := z.Next()
+				if tt == html.ErrorToken {
+					//fmt.Printf("%s: error\n", warc_target_uri)
+					accept = false
+					break
+				}
+
+				if tt == html.StartTagToken || tt == html.SelfClosingTagToken {
+					name, _ := z.TagName()
+					if bytes.Equal(name, []byte("script")) {
+						//fmt.Printf("%s: %q\n", warc_target_uri, z.Raw())
+						accept = false
+						break
+					}
+				}
 			}
 
-			// TODO: actual do work
-			fmt.Printf("%s: %v (%s)\n %v", warc_target_uri, warc_content_length, warc_truncated, resp)
-		} else {
-			_, err := r.Discard(int(warc_content_length))
-			if err != nil {
-				panic(err)
+			if accept {
+				fmt.Printf("%s %v %s\n", warc_target_uri, warc_content_length, warc_truncated)
 			}
 		}
+		r.Discard(int(lr.N))
 
 		var sep [4]byte
 		_, err := io.ReadFull(r, sep[:])
