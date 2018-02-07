@@ -81,6 +81,7 @@ func peekContentType(r *bufio.Reader) (mime string, charset string, source strin
 	for {
 		tt := z.Next()
 		if tt == html.ErrorToken {
+			// FIXME: handle EOF gracefuly
 			return "", "", "peekErr"
 		}
 
@@ -117,7 +118,6 @@ func peekContentType(r *bufio.Reader) (mime string, charset string, source strin
 			}
 		}
 	}
-	return "", "", "peekNone"
 }
 
 func matchesCriteria(r io.Reader, uri string) bool {
@@ -164,6 +164,7 @@ func matchesCriteria(r io.Reader, uri string) bool {
 	for {
 		tt := z.Next()
 		if tt == html.ErrorToken {
+			// FIXME: handle EOF gracefuly
 			//fmt.Printf("%s: error\n", warcTargetURI)
 			return false
 		}
@@ -176,7 +177,6 @@ func matchesCriteria(r io.Reader, uri string) bool {
 			}
 		}
 	}
-	return true
 }
 
 func main() {
@@ -223,7 +223,7 @@ func main() {
 			panic("expected Content-Length > 0")
 		}
 
-		lr := io.LimitedReader{r, int64(warcContentLength)}
+		lr := io.LimitedReader{R: r, N: int64(warcContentLength)}
 
 		if warcTypeResponse && matchesCriteria(&lr, string(warcTargetURI)) {
 			fmt.Printf("%s %v %s\n", warcTargetURI, warcContentLength, warcTruncated)
