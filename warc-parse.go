@@ -33,7 +33,7 @@ func getLine(r *bufio.Reader) []byte {
 	return line[:len(line)-1]
 }
 
-func noEof(r *bufio.Reader) bool {
+func noEOF(r *bufio.Reader) bool {
 	_, err := r.Peek(1)
 	if err != nil {
 		if err == io.EOF {
@@ -164,14 +164,14 @@ func matchesCriteria(r io.Reader, uri string) bool {
 	for {
 		tt := z.Next()
 		if tt == html.ErrorToken {
-			//fmt.Printf("%s: error\n", warc_target_uri)
+			//fmt.Printf("%s: error\n", warcTargetURI)
 			return false
 		}
 
 		if tt == html.StartTagToken || tt == html.SelfClosingTagToken {
 			name, _ := z.TagName()
 			if bytes.Equal(name, []byte("script")) {
-				//fmt.Printf("%s: %q\n", warc_target_uri, z.Raw())
+				//fmt.Printf("%s: %q\n", warcTargetURI, z.Raw())
 				return false
 			}
 		}
@@ -182,16 +182,16 @@ func matchesCriteria(r io.Reader, uri string) bool {
 func main() {
 	r := bufio.NewReader(os.Stdin)
 
-	for noEof(r) {
+	for noEOF(r) {
 		line := getLine(r)
 		if !bytes.Equal(line, []byte("WARC/1.0")) {
 			panic(fmt.Sprintf("expected WARC/1.0, instead: %q", line))
 		}
 
-		warc_type_response := false
-		var warc_content_length uint = 0
-		var warc_target_uri []byte
-		var warc_truncated []byte
+		warcTypeResponse := false
+		var warcContentLength uint
+		var warcTargetURI []byte
+		var warcTruncated []byte
 
 		for {
 			line := getLine(r)
@@ -202,10 +202,10 @@ func main() {
 			field := bytes.SplitN(line, []byte(": "), 2)
 			if bytes.Equal(field[0], []byte("WARC-Type")) {
 				if bytes.Equal(field[1], []byte("response")) {
-					warc_type_response = true
+					warcTypeResponse = true
 				}
 			} else if bytes.Equal(field[0], []byte("Content-Length")) {
-				n, err := fmt.Sscanf(string(field[1]), "%v", &warc_content_length)
+				n, err := fmt.Sscanf(string(field[1]), "%v", &warcContentLength)
 				if err != nil {
 					panic(err)
 				}
@@ -213,20 +213,20 @@ func main() {
 					panic(fmt.Sprintf("Content-Length: expected integer, instead: %q", field[1]))
 				}
 			} else if bytes.Equal(field[0], []byte("WARC-Target-URI")) {
-				warc_target_uri = field[1]
+				warcTargetURI = field[1]
 			} else if bytes.Equal(field[0], []byte("WARC-Truncated")) {
-				warc_truncated = field[1]
+				warcTruncated = field[1]
 			}
 		}
 
-		if warc_content_length == 0 {
+		if warcContentLength == 0 {
 			panic("expected Content-Length > 0")
 		}
 
-		lr := io.LimitedReader{r, int64(warc_content_length)}
+		lr := io.LimitedReader{r, int64(warcContentLength)}
 
-		if warc_type_response && matchesCriteria(&lr, string(warc_target_uri)) {
-			fmt.Printf("%s %v %s\n", warc_target_uri, warc_content_length, warc_truncated)
+		if warcTypeResponse && matchesCriteria(&lr, string(warcTargetURI)) {
+			fmt.Printf("%s %v %s\n", warcTargetURI, warcContentLength, warcTruncated)
 		}
 		r.Discard(int(lr.N))
 
