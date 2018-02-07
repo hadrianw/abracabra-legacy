@@ -70,7 +70,7 @@ func determineEncoding(r *bufio.Reader, contentType string) (mediatype string, e
 			mediatype = "text/html"
 			continue
 		} else if tt == html.ErrorToken {
-			// FIXME: handle EOF gracefuly
+			// FIXME: reports errors except EOF
 			break
 		} else if tt != html.SelfClosingTagToken {
 			continue
