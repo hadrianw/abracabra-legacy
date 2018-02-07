@@ -9,9 +9,7 @@ import (
 	"os"
 	//"strconv"
 	"strings"
-)
 
-import (
 	"golang.org/x/net/html"
 	"golang.org/x/text/encoding"
 	"golang.org/x/text/encoding/htmlindex"
