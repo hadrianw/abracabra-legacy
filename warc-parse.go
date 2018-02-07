@@ -13,7 +13,7 @@ import (
 
 import (
 	"golang.org/x/net/html"
-	//"golang.org/x/text/encoding"
+	"golang.org/x/text/encoding"
 	"golang.org/x/text/encoding/htmlindex"
 )
 
@@ -156,8 +156,8 @@ func matchesCriteria(r io.Reader, uri string) bool {
 
 	enc, err := htmlindex.Get(charset)
 	if err != nil {
-		fmt.Printf("%v: %s %q (%q)\n", err, uri, charset, source)
-		return false
+		fmt.Fprintf(os.Stderr, "%v: %s %q (%q)\n", err, uri, charset, source)
+		enc = encoding.Nop
 	}
 
 	z := html.NewTokenizer(enc.NewDecoder().Reader(br))
