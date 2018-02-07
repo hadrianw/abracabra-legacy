@@ -150,9 +150,8 @@ func matchesCriteria(r io.Reader, uri string) bool {
 	for {
 		tt := z.Next()
 		if tt == html.ErrorToken {
-			// FIXME: handle EOF gracefuly
 			//fmt.Printf("%s: error\n", warcTargetURI)
-			return false
+			return z.Err() == io.EOF
 		}
 
 		if tt == html.StartTagToken || tt == html.SelfClosingTagToken {
