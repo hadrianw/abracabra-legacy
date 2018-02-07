@@ -63,7 +63,7 @@ func parseContentType(ct string) (mime string, charset string) {
 			continue
 		}
 		if len(val) >= 2 && val[0] == '"' && val[len(val)-1] == '"' {
-			val = val[1:len(val)-1]
+			val = val[1 : len(val)-1]
 		}
 		charset = val
 	}
@@ -182,7 +182,7 @@ func matchesCriteria(r io.Reader, uri string) bool {
 func main() {
 	r := bufio.NewReader(os.Stdin)
 
-	for ; noEof(r); {
+	for noEof(r) {
 		line := getLine(r)
 		if !bytes.Equal(line, []byte("WARC/1.0")) {
 			panic(fmt.Sprintf("expected WARC/1.0, instead: %q", line))
@@ -193,7 +193,7 @@ func main() {
 		var warc_target_uri []byte
 		var warc_truncated []byte
 
-		for ;; {
+		for {
 			line := getLine(r)
 			if len(line) == 0 {
 				// end of the header
@@ -205,7 +205,7 @@ func main() {
 					warc_type_response = true
 				}
 			} else if bytes.Equal(field[0], []byte("Content-Length")) {
-				n, err := fmt.Sscanf(string(field[1]), "%v", &warc_content_length);
+				n, err := fmt.Sscanf(string(field[1]), "%v", &warc_content_length)
 				if err != nil {
 					panic(err)
 				}
@@ -224,7 +224,7 @@ func main() {
 		}
 
 		lr := io.LimitedReader{r, int64(warc_content_length)}
-		
+
 		if warc_type_response && matchesCriteria(&lr, string(warc_target_uri)) {
 			fmt.Printf("%s %v %s\n", warc_target_uri, warc_content_length, warc_truncated)
 		}
@@ -240,4 +240,3 @@ func main() {
 		}
 	}
 }
-
