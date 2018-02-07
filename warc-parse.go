@@ -211,7 +211,7 @@ func main() {
 		lr := io.LimitedReader{R: r, N: int64(warcContentLength)}
 
 		if warcTypeResponse && matchesCriteria(&lr, string(warcTargetURI)) {
-			fmt.Printf("%s %v %s\n", warcTargetURI, warcContentLength, warcTruncated)
+			fmt.Printf("%v %s %s\n", warcContentLength, warcTargetURI, warcTruncated)
 		}
 		r.Discard(int(lr.N))
 
