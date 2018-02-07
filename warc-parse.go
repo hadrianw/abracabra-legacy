@@ -5,12 +5,14 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"mime"
 	"net/http"
 	"os"
 	//"strconv"
-	"strings"
+	//"strings"
 
 	"golang.org/x/net/html"
+	"golang.org/x/net/html/charset"
 	"golang.org/x/text/encoding"
 	"golang.org/x/text/encoding/htmlindex"
 )
@@ -42,54 +44,41 @@ func noEOF(r *bufio.Reader) bool {
 	return true
 }
 
-func parseContentType(ct string) (mime string, charset string) {
-	ctv := strings.Split(ct, ";")
-	for i, el := range ctv {
-		ctv[i] = strings.ToLower(strings.TrimSpace(el))
-	}
-
-	mime = ctv[0]
-
-	for i := 1; i < len(ctv); i++ {
-		param := strings.SplitN(ctv[i], "=", 2)
-		if len(param) != 2 {
-			continue
-		}
-
-		key, val := param[0], param[1]
-		if key != "charset" {
-			continue
-		}
-		if len(val) >= 2 && val[0] == '"' && val[len(val)-1] == '"' {
-			val = val[1 : len(val)-1]
-		}
-		charset = val
+func parseMediaType(contentType string) (mediatype string, charset string) {
+	mediatype, params, err := mime.ParseMediaType(contentType)
+	if err == nil {
+		charset = params["charset"]
 	}
 
 	return
 }
 
-func peekContentType(r *bufio.Reader) (mime string, charset string, source string) {
+func determineEncoding(r *bufio.Reader, contentType string) (mediatype string, enc encoding.Encoding) {
 	buf, err := r.Peek(1024)
 	if err != nil && err != io.EOF {
 		panic(err)
 	}
 
+	enc, _, certain := charset.DetermineEncoding(buf, contentType)
+
+	charset := ""
 	z := html.NewTokenizer(bytes.NewReader(buf))
 	for {
 		tt := z.Next()
-		if tt == html.ErrorToken {
+		if tt == html.DoctypeToken {
+			// FIXME: handle XHTML and friends?
+			mediatype = "text/html"
+			continue
+		} else if tt == html.ErrorToken {
 			// FIXME: handle EOF gracefuly
-			return "", "", "peekErr"
-		}
-
-		if tt != html.SelfClosingTagToken {
+			break
+		} else if tt != html.SelfClosingTagToken {
 			continue
 		}
 
 		name, hasAttr := z.TagName()
 		if hasAttr && bytes.Equal(name, []byte("meta")) {
-			raw := string(z.Raw()[:])
+			//raw := string(z.Raw()[:])
 			moreAttr := true
 			attrs := make(map[string]string)
 			for moreAttr {
@@ -103,19 +92,29 @@ func peekContentType(r *bufio.Reader) (mime string, charset string, source strin
 			}
 			switch len(attrs) {
 			case 1:
-				val, ok := attrs["charset"]
+				var ok bool
+				charset, ok = attrs["charset"]
 				if ok {
-					return "text/html", val, raw
+					mediatype = "text/html"
+					break
 				}
 			case 2:
 				val, ok := attrs["content"]
 				if attrs["http-equiv"] == "Content-Type" && ok {
-					mime, charset := parseContentType(val)
-					return mime, charset, raw
+					mediatype, charset = parseMediaType(val)
+					break
 				}
 			}
 		}
 	}
+	if !certain && charset != "" {
+		metaEnc, err := htmlindex.Get(charset)
+		if err != nil {
+			return
+		}
+		enc = metaEnc
+	}
+	return
 }
 
 func matchesCriteria(r io.Reader, uri string) bool {
@@ -127,35 +126,24 @@ func matchesCriteria(r io.Reader, uri string) bool {
 		panic(err)
 	}
 
-	mime, charset := "", ""
-	source := ""
+	contentType, mediatype := "", ""
+	//source := ""
 
-	ct := resp.Header["Content-Type"]
 	// FIXME: what about XHTML?
-	if ct != nil {
-		mime, charset = parseContentType(ct[0])
-		if mime != "text/html" {
+	if ct := resp.Header["Content-Type"]; ct != nil {
+		contentType = ct[0]
+		mediatype, _ = parseMediaType(contentType)
+		if mediatype != "text/html" {
+			// FIXME: what if empty?
 			return false
 		}
-		source = ct[0]
+		//source = contentType
 	}
 
-	if charset == "" {
-		// FIXME: decide wheter to use this encoding
-		mime, charset, source = peekContentType(br)
-		if mime != "text/html" {
-			return false
-		}
-	}
-	if charset == "" {
-		charset = "iso-8859-1"
-		source = "default"
-	}
-
-	enc, err := htmlindex.Get(charset)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v: %s %q (%q)\n", err, uri, charset, source)
-		enc = encoding.Nop
+	// FIXME: decide wheter to use this encoding
+	mediatype, enc := determineEncoding(br, contentType)
+	if mediatype != "text/html" {
+		return false
 	}
 
 	z := html.NewTokenizer(enc.NewDecoder().Reader(br))
