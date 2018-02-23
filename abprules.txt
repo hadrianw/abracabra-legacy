@@ -1,0 +1,95 @@
+[VERSION]
+!COMMENT
+[[~]DOMAIN[,[~]DOMAIN]]#[@]?#[^]?SELECTOR - * in DOMAIN, [^] before selector - UBO extensions
+[@@]PATTERN[$[~]OPTION[,[~]OPTION]]
+
+PATTERN:
+/REGEX/
+[|[|[*]]]WILDCARD[|] - the "||*" will consider a wildcard as a part of domain
+SIMPLE
+
+WILDCARD:
+[A-Za-z0-9-_.:/%^*]+
+
+SIMPLE:
+[*]?[A-Za-z0-9-_.:/%]+[*]?
+
+OPTION:
+script
+image
+stylesheet
+object
+document
+xmlhttprequest
+object-subrequest
+subdocument
+ping
+websocket
+webrtc
+elemhide
+generichide
+genericblock
+popup
+other
+third-party
+domain=[~]DOMAIN[|[~]DOMAIN]
+sitekey=SITEKEY[|SITEKEY]
+match-case
+collapse
+donottrack
+
+UBO specific:
+first-party = ~third-party
+important
+inline-script
+
+
+
+
+SIMPLE patterns could be checked this way:
+
+divide patterns by their length
+check with a window of each length with hashmap
+
+or
+
+a tree of patterns, map first letters so we know when there is a possible match
+
+
+
+EasyList used adblock syntax
+
+options for all filters
+
+URL filters
+
+generic grep ones *pattern*
+with wildcards in the middle
+few regex ones
+||example.com$third-party
+
+@@||exceptions
+
+HTML/CSS selector filters
+
+prefix ### for html id attrib
+prefix ##. for html class attrib (space separated list)
+prefix ##[A-Za-z] custom tag name
+
+a few:
+attrib filters
+a attrib filters
+div with class or id
+iframe with id or src
+
+a href URL filters
+
+do not support any other selectors
+
+possibly:
+
+stack of simple selectors: x > y > z
+
+exception for HTML filters:
+example.com#@##ad-id-attrib
+
