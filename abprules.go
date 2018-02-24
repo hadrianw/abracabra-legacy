@@ -2,7 +2,7 @@ package main
 
 import (
 	"bufio"
-	//"fmt"
+	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -61,6 +61,7 @@ func main() {
 		Domains    []string
 		NotDomains []string
 	})
+	extendedSelectorCount := 0
 	type RegexRule struct {
 		Pattern string
 		Options PatternOptions
@@ -103,6 +104,7 @@ func main() {
 
 		// extended selector rule - ignore
 		if idx := strings.Index(line, "#?#"); idx != -1 {
+			extendedSelectorCount++
 			continue
 		}
 
@@ -157,4 +159,14 @@ func main() {
 			continue
 		}
 	}
+
+	fmt.Printf(`selector: %d
+extended selector: %d
+patterns:
+	regex: %d
+not patterns:
+	regex: %d
+`, len(selectors), extendedSelectorCount,
+len(patterns.Regexes),
+len(notPatterns.Regexes))
 }
