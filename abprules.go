@@ -97,6 +97,7 @@ func main() {
 		if domains, selector := SplitSelectorRule(line, "##"); len(selector) > 0 {
 			sel := selectors[selector]
 			sel.Domains, sel.NotDomains = AppendDomains(sel.Domains, sel.NotDomains, domains)
+			selectors[selector] = sel
 			continue
 		}
 
@@ -104,6 +105,7 @@ func main() {
 		if notDomains, selector := SplitSelectorRule(line, "#@#"); len(selector) > 0 {
 			sel := selectors[selector]
 			sel.NotDomains, sel.Domains = AppendDomains(sel.NotDomains, sel.Domains, notDomains)
+			selectors[selector] = sel
 			continue
 		}
 
