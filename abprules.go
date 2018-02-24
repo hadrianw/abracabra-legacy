@@ -35,9 +35,9 @@ AppendixLoop:
 }
 
 type PatternOptions struct {
-		Options []string
-		Domains []string
-		NotDomains []string
+	Options    []string
+	Domains    []string
+	NotDomains []string
 }
 
 func main() {
@@ -58,10 +58,13 @@ func main() {
 	}
 
 	selectors := make(map[string]struct {
-		Domains []string
+		Domains    []string
 		NotDomains []string
 	})
-	type RegexRule struct {Pattern string; Options PatternOptions}
+	type RegexRule struct {
+		Pattern string
+		Options PatternOptions
+	}
 	var patterns, notPatterns struct {
 		Regexes []RegexRule
 	}
@@ -142,7 +145,7 @@ func main() {
 
 		// regex rule
 		if strings.HasPrefix(pattern, "/") && strings.HasSuffix(pattern, "/") {
-			regex := pattern[1:len(pattern)-1]
+			regex := pattern[1 : len(pattern)-1]
 			pts.Regexes = append(pts.Regexes, RegexRule{regex, opts})
 			continue
 		}
