@@ -101,6 +101,11 @@ func main() {
 			continue
 		}
 
+		// extended selector rule - ignore
+		if idx := strings.Index(line, "#?#"); idx != -1 {
+			continue
+		}
+
 		// selector exception rule
 		if notDomains, selector := SplitSelectorRule(line, "#@#"); len(selector) > 0 {
 			sel := selectors[selector]
