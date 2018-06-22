@@ -100,7 +100,7 @@ func determineEncoding(r *bufio.Reader, contentType string) (mediatype string, e
 				}
 			case 2:
 				val, ok := attrs["content"]
-				if attrs["http-equiv"] == "Content-Type" && ok {
+				if ok && attrs["http-equiv"] == "Content-Type" {
 					mediatype, charset = parseMediaType(val)
 					break
 				}
