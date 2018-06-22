@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"mime"
@@ -117,13 +118,17 @@ func determineEncoding(r *bufio.Reader, contentType string) (mediatype string, e
 	return
 }
 
-func matchesCriteria(r io.Reader, uri string) bool {
+func check(r io.Reader, uri string) (ads bool, code bool, err error) {
+	ads = false
+	// js, object or embed
+	code = false
+
 	// FIXME: it's now double buffered, maybe use NewReaderSize to make it more sensible?
 	br := bufio.NewReader(r)
 
 	resp, err := http.ReadResponse(br, nil)
 	if err != nil {
-		panic(err)
+		return
 	}
 
 	contentType, mediatype := "", ""
@@ -135,7 +140,8 @@ func matchesCriteria(r io.Reader, uri string) bool {
 		mediatype, _ = parseMediaType(contentType)
 		if mediatype != "text/html" {
 			// FIXME: what if empty?
-			return false
+			err = errors.New("Unsupported mediatype " + mediatype)
+			return
 		}
 		//source = contentType
 	}
@@ -143,26 +149,78 @@ func matchesCriteria(r io.Reader, uri string) bool {
 	// FIXME: decide wheter to use this encoding
 	mediatype, enc := determineEncoding(br, contentType)
 	if mediatype != "text/html" {
-		return false
+		err = errors.New("Unsupported mediatype " + mediatype)
+		return
 	}
 
 	z := html.NewTokenizer(enc.NewDecoder().Reader(br))
 	for {
 		tt := z.Next()
 		if tt == html.ErrorToken {
-			//fmt.Printf("%s: error\n", warcTargetURI)
-			return z.Err() == io.EOF
+			if z.Err() != io.EOF {
+				err = z.Err()
+			}
+			return
 		}
 
 		if tt == html.StartTagToken || tt == html.SelfClosingTagToken {
-			name, _ := z.TagName()
-			if bytes.Equal(name, []byte("script")) {
-				//fmt.Printf("%s: %q\n", warcTargetURI, z.Raw())
-				return false
+			name, moreAttr := z.TagName()
+			nameStr := string(name)
+
+			img := false
+			urlAttr := ""
+
+			switch nameStr {
+			case "img":
+				urlAttr = "src"
+				img = true
+			case "script", "embed":
+				urlAttr = "src"
+				code = true
+			case "object":
+				urlAttr = "data"
+				code = true
+			case "iframe", "video", "audio", "source", "track":
+				urlAttr = "src"
+			case "link":
+				urlAttr = "href"
+			}
+
+			for moreAttr {
+				key, val, moreAttr = z.TagAttr()
+				if img && bytes.Equal(key, []byte("imgset") {
+					for srcset := bytes.NewBuffer(val);
+					src, err := srcset.ReadBytes(' ');
+					_, err := srcset.ReadBytes(',') {
+						adsF, codeF = filter(src)
+					}
+				} else if urlAttr == string(key) {
+					adsF, codeF = filter(val)
+				} else if bytes.HasPrefix(key, []byte("on")) {
+					code = true
+				}
 			}
 		}
 	}
 }
+
+/*
+does filtering on a/href makes sense?
+tag attribs:
+
+* on* - js
+link href
+audio src
+	source src
+img src,srcset
+video src
+	track src
+embed src
+iframe src
+script src
+object data
+	also: type for possible code execution
+*/
 
 func main() {
 	r := bufio.NewReader(os.Stdin)
@@ -210,7 +268,7 @@ func main() {
 
 		lr := io.LimitedReader{R: r, N: int64(warcContentLength)}
 
-		if warcTypeResponse && matchesCriteria(&lr, string(warcTargetURI)) {
+		if warcTypeResponse {&& check(&lr, string(warcTargetURI)) {
 			fmt.Printf("%v %s %s\n", warcContentLength, warcTargetURI, warcTruncated)
 		}
 		r.Discard(int(lr.N))
