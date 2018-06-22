@@ -43,6 +43,18 @@ type PatternOptions struct {
 func main() {
 	r := bufio.NewReader(os.Stdin)
 
+	f, err := os.Create("unaccounted.txt")
+	if err != nil {
+		panic(err)
+	}
+	w := bufio.NewWriter(f)
+	defer func() {
+		err := f.Close()
+		if err != nil {
+			panic(err)
+		}
+	}()
+
 	b, err := r.Peek(1)
 	if err != nil {
 		if err == io.EOF {
@@ -57,6 +69,11 @@ func main() {
 		}
 	}
 
+	total := 0
+	unaccounted := 0
+
+	selectorCount := 0
+	selectorExceptionCount := 0
 	selectors := make(map[string]struct {
 		Domains    []string
 		NotDomains []string
@@ -69,6 +86,13 @@ func main() {
 	var patterns, notPatterns struct {
 		Regexes []RegexRule
 	}
+	domainInOptionsCount := 0
+	domainInPatternCount := 0
+	simplePatternCount := 0
+	backPatternCount := 0
+
+	// TODO: ||example.com*whatever - domain wildcards
+	var domainBlacklist []string
 	pts := &patterns
 
 	for {
@@ -94,11 +118,14 @@ func main() {
 			panic(err)
 		}
 
+		total++
+
 		// selector rule
 		if domains, selector := SplitSelectorRule(line, "##"); len(selector) > 0 {
 			sel := selectors[selector]
 			sel.Domains, sel.NotDomains = AppendDomains(sel.Domains, sel.NotDomains, domains)
 			selectors[selector] = sel
+			selectorCount++
 			continue
 		}
 
@@ -113,6 +140,7 @@ func main() {
 			sel := selectors[selector]
 			sel.NotDomains, sel.Domains = AppendDomains(sel.NotDomains, sel.Domains, notDomains)
 			selectors[selector] = sel
+			selectorExceptionCount++
 			continue
 		}
 
@@ -126,9 +154,9 @@ func main() {
 		idx := strings.LastIndex(line, "$")
 		if idx != -1 {
 			pattern = line[:idx]
-			options = line[idx+1:]
+			options = line[idx+1:len(line)-1]
 		} else {
-			pattern = line
+			pattern = line[:len(line)-1]
 		}
 		if strings.HasPrefix(pattern, "@@") {
 			pts = &notPatterns
@@ -152,21 +180,83 @@ func main() {
 			}
 		}
 
+		// domain serves ads
+		if pts == &patterns {
+			for _, d := range opts.Domains {
+				domainBlacklist = append(domainBlacklist, d)
+			}
+			if len(opts.Domains) > 0 {
+				domainInOptionsCount++
+				continue
+			}
+		}
+		if pts == &notPatterns {
+			for _, d := range opts.NotDomains {
+				domainBlacklist = append(domainBlacklist, d)
+			}
+			if len(opts.NotDomains) > 0 {
+				domainInOptionsCount++
+				continue
+			}
+		}
+
 		// regex rule
 		if strings.HasPrefix(pattern, "/") && strings.HasSuffix(pattern, "/") {
 			regex := pattern[1 : len(pattern)-1]
 			pts.Regexes = append(pts.Regexes, RegexRule{regex, opts})
 			continue
 		}
+
+		if strings.HasPrefix(pattern, "||") {
+			// FIXME: domain can be in pattern and in options at the same time
+			pattern := pattern[2:]
+			if idx := strings.IndexAny(pattern, "/^"); idx != -1 {
+				domainBlacklist = append(domainBlacklist, pattern[:idx])
+				domainInPatternCount++
+				continue
+			}
+		} else if pts == &patterns && !strings.HasPrefix(pattern, "|") {
+			count := &simplePatternCount
+			position := 0
+			length := len(pattern)
+			if strings.HasPrefix(pattern, "*") {
+				position++
+				length--
+			}
+			if strings.HasSuffix(pattern, "|") {
+				count = &backPatternCount
+				length--
+			} else if strings.HasSuffix(pattern, "*") {
+				length--
+			}
+			pattern = pattern[position:length]
+			if idx := strings.IndexAny(pattern, "*^"); idx == -1 {
+				(*count)++
+				continue
+			}
+		}
+
+		unaccounted++
+		if _, err := w.WriteString(line); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+		}
 	}
 
 	fmt.Printf(`selector: %d
+selector exception: %d
 extended selector: %d
 patterns:
+	domain in options: %d
+	domain in pattern: %d
 	regex: %d
+	simple: %d
+	back: %d
 not patterns:
 	regex: %d
-`, len(selectors), extendedSelectorCount,
-len(patterns.Regexes),
-len(notPatterns.Regexes))
+total: %d
+unaccounted: %d
+`, selectorCount, selectorExceptionCount, extendedSelectorCount,
+domainInOptionsCount, domainInPatternCount, len(patterns.Regexes), simplePatternCount, backPatternCount,
+len(notPatterns.Regexes),
+total, unaccounted)
 }
