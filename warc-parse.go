@@ -126,6 +126,7 @@ func blacklistFilter(uri string) bool {
 
 }
 
+// TODO: check also for all external third-party content
 func check(r io.Reader, uri string) (ads bool, code bool, err error) {
 	ads = false
 	// js, object or embed
