@@ -118,10 +118,23 @@ func determineEncoding(r *bufio.Reader, contentType string) (mediatype string, e
 	return
 }
 
+func uriFilter(uri string) bool {
+
+}
+
+func blacklistFilter(uri string) bool {
+
+}
+
 func check(r io.Reader, uri string) (ads bool, code bool, err error) {
 	ads = false
 	// js, object or embed
 	code = false
+
+	ads = blacklistFilter(uri)
+	if ads {
+		return
+	}
 
 	// FIXME: it's now double buffered, maybe use NewReaderSize to make it more sensible?
 	br := bufio.NewReader(r)
@@ -192,10 +205,18 @@ func check(r io.Reader, uri string) (ads bool, code bool, err error) {
 					for srcset := bytes.NewBuffer(val);
 					src, err := srcset.ReadBytes(' ');
 					_, err := srcset.ReadBytes(',') {
-						adsF, codeF = filter(src)
+						ads = uriFilter(src)
+						if ads {
+							return
+						}
 					}
 				} else if urlAttr == string(key) {
-					adsF, codeF = filter(val)
+					ads = uriFilter(val)
+					if ads {
+						return
+					}
+				} else if bytes.Equal(key, []byte("class") || bytes.Equal(key, []byte("id") {
+
 				} else if bytes.HasPrefix(key, []byte("on")) {
 					code = true
 				}
@@ -268,8 +289,13 @@ func main() {
 
 		lr := io.LimitedReader{R: r, N: int64(warcContentLength)}
 
-		if warcTypeResponse {&& check(&lr, string(warcTargetURI)) {
-			fmt.Printf("%v %s %s\n", warcContentLength, warcTargetURI, warcTruncated)
+		if warcTypeResponse {
+			ads, code, err := check(&lr, string(warcTargetURI));
+			if err {
+				fmt.Fprintf(os.Stderr, "check error: %s", err);
+			} else if  !ads {
+				fmt.Printf("%v %t %s %s %s\n", warcContentLength, code, warcTargetURI, warcTruncated)
+			}
 		}
 		r.Discard(int(lr.N))
 
