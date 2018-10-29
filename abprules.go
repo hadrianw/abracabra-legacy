@@ -168,6 +168,7 @@ func main() {
 			pattern = pattern[2:]
 		}
 
+		// parse options, search for domains option
 		var opts PatternOptions
 		opts.Options = strings.Split(options, ",")
 		for _, o := range opts.Options {
@@ -185,7 +186,7 @@ func main() {
 			}
 		}
 
-		// domain serves ads
+		// domain in options, it serves ads
 		if pts == &patterns {
 			for _, d := range opts.Domains {
 				domainBlacklist = append(domainBlacklist, d)
