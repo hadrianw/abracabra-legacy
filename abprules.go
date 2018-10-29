@@ -73,6 +73,7 @@ func main() {
 	unaccounted := 0
 
 	selectorCount := 0
+	bareSelectorCount := 0
 	selectorExceptionCount := 0
 	selectors := make(map[string]struct {
 		Domains    []string
@@ -127,6 +128,9 @@ func main() {
 			sel.Domains, sel.NotDomains = AppendDomains(sel.Domains, sel.NotDomains, domains)
 			selectors[selector] = sel
 			selectorCount++
+			if len(domains) == 0 || (len(domains) == 1 && domains[0] == "") {
+				bareSelectorCount++
+			}
 			continue
 		}
 
@@ -243,7 +247,7 @@ func main() {
 		}
 	}
 
-	fmt.Printf(`selector: %d
+	fmt.Printf(`selector: %d (bare: %d)
 selector exception: %d
 extended selector: %d
 patterns:
@@ -256,7 +260,7 @@ not patterns:
 	regex: %d
 total: %d
 unaccounted: %d
-`, selectorCount, selectorExceptionCount, extendedSelectorCount,
+`, selectorCount, bareSelectorCount, selectorExceptionCount, extendedSelectorCount,
 domainInOptionsCount, domainInPatternCount, len(patterns.Regexes), simplePatternCount, backPatternCount,
 len(notPatterns.Regexes),
 total, unaccounted)
