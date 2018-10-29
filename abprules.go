@@ -117,6 +117,7 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
+		line = line[:len(line)-1]
 
 		total++
 
