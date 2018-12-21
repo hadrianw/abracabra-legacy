@@ -334,7 +334,7 @@ func main() {
 		if warcTypeResponse {
 			ads, code, err := check(&lr, string(warcTargetURI));
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "check error: %s", err);
+				fmt.Fprintf(os.Stderr, "check error: %s\n", err);
 			} else if  !ads {
 				fmt.Printf("%v %t %s %s %s\n", warcContentLength, code, warcTargetURI, warcTruncated)
 			}
