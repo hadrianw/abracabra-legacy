@@ -8,6 +8,7 @@ import (
 	"io"
 	"mime"
 	"net/http"
+	"net/url"
 	"os"
 	//"strconv"
 	//"strings"
@@ -118,12 +119,31 @@ func determineEncoding(r *bufio.Reader, contentType string) (mediatype string, e
 	return
 }
 
-func uriFilter(uri string) bool {
+var blocklist map[string]struct{}
 
+func loadBlocklist(r *bufio.Reader, blocklist *map[string]struct{}) error {
+	line, err := r.ReadString('\n')
+	if err != nil {
+		return err
+	}
+	hosts := strings.Fields(line)
+	if len(hosts) < 2 {
+		continue
+	}
+	hosts = hosts[1:]
+}
+
+func uriFilter(uriString string) bool {
+	uri, err := url.Parse(uriString)
+	if err != nil {
+		return false
+	}
+	_, ok := blocklist[uri.Hostname()]
+	return ok
 }
 
 func blacklistFilter(uri string) bool {
-
+	return false
 }
 
 // TODO: check also for all external third-party content
