@@ -283,6 +283,7 @@ func main() {
 		panic(err)
 	}
 	defer blist.Close()
+	blocklist = make(map[string]struct{})
 	loadBlocklist(bufio.NewReader(blist), &blocklist)
 
 	r := bufio.NewReader(os.Stdin)
