@@ -181,13 +181,13 @@ func check(r io.Reader, uri string) (ads bool, code bool, err error) {
 			name, moreAttr := z.TagName()
 			nameStr := string(name)
 
-			img := false
+			//img := false
 			urlAttr := ""
 
 			switch nameStr {
 			case "img":
 				urlAttr = "src"
-				img = true
+				//img = true
 			case "script", "embed":
 				urlAttr = "src"
 				code = true
@@ -201,22 +201,25 @@ func check(r io.Reader, uri string) (ads bool, code bool, err error) {
 			}
 
 			for moreAttr {
+				var key, val []byte
 				key, val, moreAttr = z.TagAttr()
-				if img && bytes.Equal(key, []byte("imgset") {
-					for srcset := bytes.NewBuffer(val);
-					src, err := srcset.ReadBytes(' ');
+				/*
+				if img && bytes.Equal(key, []byte("imgset")) {
+					srcset := bytes.NewBuffer(val)
+					for
+					src, err := srcset.ReadBytes(' ')
 					_, err := srcset.ReadBytes(',') {
 						ads = uriFilter(src)
 						if ads {
 							return
 						}
 					}
-				} else if urlAttr == string(key) {
-					ads = uriFilter(val)
+				} else */if string(key) == urlAttr {
+					ads = uriFilter(string(val))
 					if ads {
 						return
 					}
-				} else if bytes.Equal(key, []byte("class") || bytes.Equal(key, []byte("id") {
+				} else if bytes.Equal(key, []byte("class")) || bytes.Equal(key, []byte("id")) {
 
 				} else if bytes.HasPrefix(key, []byte("on")) {
 					code = true
@@ -292,7 +295,7 @@ func main() {
 
 		if warcTypeResponse {
 			ads, code, err := check(&lr, string(warcTargetURI));
-			if err {
+			if err != nil {
 				fmt.Fprintf(os.Stderr, "check error: %s", err);
 			} else if  !ads {
 				fmt.Printf("%v %t %s %s %s\n", warcContentLength, code, warcTargetURI, warcTruncated)
