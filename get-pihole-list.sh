@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 set -e
 
 wget -N https://raw.githubusercontent.com/jdiazmx/pi-hole/master/adlists.default
