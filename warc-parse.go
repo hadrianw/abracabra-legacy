@@ -11,7 +11,7 @@ import (
 	"net/url"
 	"os"
 	//"strconv"
-	//"strings"
+	"strings"
 
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/charset"
@@ -122,15 +122,25 @@ func determineEncoding(r *bufio.Reader, contentType string) (mediatype string, e
 var blocklist map[string]struct{}
 
 func loadBlocklist(r *bufio.Reader, blocklist *map[string]struct{}) error {
-	line, err := r.ReadString('\n')
-	if err != nil {
-		return err
+	for {
+		line, err := r.ReadString('\n')
+		if err == io.EOF {
+			return nil
+		} else if err != nil {
+			return err
+		}
+		if line[0] == '#' {
+			continue
+		}
+		hosts := strings.Fields(line)
+		if len(hosts) < 2 {
+			continue
+		}
+		hosts = hosts[1:]
+		for i := range hosts {
+			(*blocklist)[hosts[i]] = struct{}{}
+		}
 	}
-	hosts := strings.Fields(line)
-	if len(hosts) < 2 {
-		continue
-	}
-	hosts = hosts[1:]
 }
 
 func uriFilter(uriString string) bool {
@@ -268,6 +278,13 @@ object data
 */
 
 func main() {
+	blist, err := os.Open("pihole.hosts")
+	if err != nil {
+		panic(err)
+	}
+	defer blist.Close()
+	loadBlocklist(bufio.NewReader(blist), &blocklist)
+
 	r := bufio.NewReader(os.Stdin)
 
 	for noEOF(r) {
