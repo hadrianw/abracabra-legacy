@@ -255,6 +255,23 @@ func check(r io.Reader, uri string) (ads bool, code bool, err error) {
 					code = true
 				}
 			}
+
+			if nameStr == "script" {
+				tt := z.Next()
+				if tt == html.ErrorToken {
+					if z.Err() != io.EOF {
+						err = z.Err()
+					}
+					return
+				}
+				if tt == html.TextToken {
+					script := bytes.TrimSpace(z.Text())
+					if bytes.HasPrefix(script, []byte("var _gaq")) {
+						ads = true
+						return
+					}
+				}
+			}
 		}
 	}
 }
