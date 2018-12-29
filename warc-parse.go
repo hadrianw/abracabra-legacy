@@ -294,6 +294,23 @@ object data
 	also: type for possible code execution
 */
 
+type SavingLimitedReader struct {
+	L io.LimitedReader
+	B []byte
+}
+
+func SaveLimitReader(r io.Reader, n int64) SavingLimitedReader {
+	return SavingLimitedReader{L: io.LimitedReader{R: r, N: n}, B: make([]byte, 0)}
+}
+
+func (s *SavingLimitedReader) Read(p []byte) (n int, err error) {
+	n, err = s.L.Read(p)
+	if n > 0 {
+		s.B = append(s.B, p...)
+	}
+	return
+}
+
 func main() {
 	blist, err := os.Open("pihole.hosts")
 	if err != nil {
@@ -302,6 +319,12 @@ func main() {
 	defer blist.Close()
 	blocklist = make(map[string]struct{})
 	loadBlocklist(bufio.NewReader(blist), &blocklist)
+
+	cache, err := os.Create("cache.warc")
+	defer cache.Close()
+	if err != nil {
+		panic(err)
+	}
 
 	r := bufio.NewReader(os.Stdin)
 
@@ -346,7 +369,7 @@ func main() {
 			panic("expected Content-Length > 0")
 		}
 
-		lr := io.LimitedReader{R: r, N: int64(warcContentLength)}
+		lr := SaveLimitReader(r, int64(warcContentLength))
 
 		if warcTypeResponse {
 			ads, code, err := check(&lr, string(warcTargetURI));
@@ -354,9 +377,17 @@ func main() {
 				fmt.Fprintf(os.Stderr, "check error: %s\n", err);
 			} else if  !ads {
 				fmt.Printf("%v %t %s %s %s\n", warcContentLength, code, warcTargetURI, warcTruncated)
+
+				fmt.Fprint(cache, "WARC/1.0\r\n")
+				fmt.Fprint(cache, "WARC-Type: response\r\n")
+				fmt.Fprintf(cache, "Content-Length: %v\r\n", warcContentLength)
+				fmt.Fprintf(cache, "WARC-Target-URI: %s\r\n", warcTargetURI)
+				fmt.Fprint(cache, "\r\n")
+				fmt.Fprintf(cache, "%s", lr.B)
+				fmt.Fprint(cache, "\r\n\r\n")
 			}
 		}
-		r.Discard(int(lr.N))
+		r.Discard(int(lr.L.N))
 
 		var sep [4]byte
 		_, err := io.ReadFull(r, sep[:])
