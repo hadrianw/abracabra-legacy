@@ -297,7 +297,7 @@ func main() {
 		warcTypeResponse := false
 		var warcContentLength uint
 		var warcTargetURI []byte
-		var warcTruncated []byte
+		warcTruncated := []byte("full")
 
 		for {
 			line := getLine(r)
