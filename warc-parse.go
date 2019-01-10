@@ -306,7 +306,7 @@ func SaveLimitReader(r io.Reader, n int64) SavingLimitedReader {
 func (s *SavingLimitedReader) Read(p []byte) (n int, err error) {
 	n, err = s.L.Read(p)
 	if n > 0 {
-		s.B = append(s.B, p...)
+		s.B = append(s.B, p[:n]...)
 	}
 	return
 }
