@@ -49,6 +49,7 @@ func main() {
 	}
 	w := bufio.NewWriter(f)
 	defer func() {
+		w.Flush()
 		err := f.Close()
 		if err != nil {
 			panic(err)
