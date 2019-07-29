@@ -236,7 +236,7 @@ func main() {
 		}
 
 		unaccounted++
-		if _, err := w.WriteString(line); err != nil {
+		if _, err := fmt.Fprintln(w, line); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 		}
 	}
