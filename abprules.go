@@ -98,7 +98,7 @@ func main() {
 	pts := &patterns
 
 	for {
-		b, err := r.Peek(1)
+		line, err := r.ReadString('\n')
 		if err != nil {
 			if err == io.EOF {
 				break
@@ -107,19 +107,11 @@ func main() {
 		}
 
 		// comment
-		if b[0] == '!' {
-			_, err := r.ReadBytes('\n')
-			if err != nil {
-				panic(err)
-			}
+		if strings.HasPrefix(line, "!") {
 			continue
 		}
 
-		line, err := r.ReadString('\n')
-		if err != nil {
-			panic(err)
-		}
-		line = line[:len(line)-1]
+		line = strings.TrimRight(line, " \t\r\n")
 
 		total++
 
